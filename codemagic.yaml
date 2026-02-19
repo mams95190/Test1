@@ -5,16 +5,19 @@ workflows:
       flutter: 3.41.1
 
     scripts:
+      # --- Nettoyage complet pour éviter les caches v1 ---
       - name: Clean Flutter & Gradle
         script: |
           echo "=== Nettoyage Flutter & Gradle ==="
           flutter clean
-          rm -rf android/.gradle
-          rm -rf android/app/build
+          if [ -d android/.gradle ]; then rm -rf android/.gradle; fi
+          if [ -d android/app/build ]; then rm -rf android/app/build; fi
 
+      # --- Récupération des packages ---
       - name: Get packages
         script: flutter pub get
 
+      # --- Commit optionnel (ne bloque pas si rien à commit) ---
       - name: Commit changes (optional)
         script: |
           git config --global user.email "you@example.com"
@@ -23,8 +26,10 @@ workflows:
           git commit -m "Clean project ready for build" || echo "No changes to commit"
           git push origin main || echo "Push failed, maybe no rights"
 
+      # --- Build APK debug sans shrink (plus safe pour Firebase/Map) ---
       - name: Build APK Debug
         script: flutter build apk --debug --no-shrink
 
+    # --- Artifacts pour récupérer l’APK ---
     artifacts:
       - build/app/outputs/**/*.apk
