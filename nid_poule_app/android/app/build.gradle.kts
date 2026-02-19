@@ -1,14 +1,13 @@
 plugins {
     id("com.android.application")
     kotlin("android")
-    id("com.google.gms.google-services") // <-- IMPORTANT: Google Services
 }
 
 android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.nid_poule_app"
+        applicationId = "com.android.niddepoulet"  // ⚠️ doit correspondre au google-services.json
         minSdk = 21
         targetSdk = 34
         versionCode = 1
@@ -16,7 +15,7 @@ android {
     }
 
     buildTypes {
-        release {
+        getByName("release") {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

@@ -24,3 +24,5 @@ plugins {
 }
 
 include(":app")
+rootProject.name = "nid_poule_app"
+include(":app")

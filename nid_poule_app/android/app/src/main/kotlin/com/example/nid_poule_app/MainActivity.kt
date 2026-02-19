@@ -1,5 +1,6 @@
-package com.example.nid_poule_app
+package com.android.niddepoulet
 
 import io.flutter.embedding.android.FlutterActivity
 
-class MainActivity : FlutterActivity()
+class MainActivity: FlutterActivity() {
+}
