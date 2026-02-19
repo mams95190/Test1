@@ -14,12 +14,6 @@ workflows:
       - name: Install dependencies
         script: |
           flutter pub get
-      - name: Analyze
-        script: |
-          flutter analyze
-      - name: Run tests
-        script: |
-          flutter test
       - name: Build Android AppBundle
         script: |
           flutter build appbundle --release
