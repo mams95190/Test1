@@ -69,20 +69,20 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
             children: [
               Expanded(
                 flex: 7,
-                child: FlutterMap(
+                child: FlutterMap(  // ✅ nonRotatedChildren → children
                   mapController: _mapController,
-                  options: MapOptions(
-                    center: LatLng(50.8503, 4.3517),
-                    zoom: 13,
-                    onTap: (tapPos, latLng) async {
+                  options: MapOptions(  // ✅ center → initialCenter
+                    initialCenter: LatLng(50.8503, 4.3517),
+                    initialZoom: 13,  // ✅ Ajouté (requis)
+                    onTap: (tapPosition, point) async {  // ✅ Signature changée
                       final num = await _reserveNextNumber();
                       showDialog(
                         context: context,
-                        builder: (_) => AddNidDialog(pos: latLng, autoNum: num),
+                        builder: (_) => AddNidDialog(pos: point, autoNum: num),
                       );
                     },
                   ),
-                  nonRotatedChildren: [
+                  children: [  // ✅ Structure moderne
                     TileLayer(
                       urlTemplate: 'https://tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.nidpoule',
@@ -99,7 +99,7 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
                           point: pos,
                           width: 48,
                           height: 48,
-                          builder: (ctx) => GestureDetector(
+                          child: GestureDetector(  // ✅ builder → child
                             onTap: () => _onNidSelected(pos, doc.id),
                             child: Container(
                               decoration: BoxDecoration(
@@ -137,6 +137,7 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
                   ],
                 ),
               ),
+              // Reste du code LISTE inchangé...
               Expanded(
                 flex: 3,
                 child: Container(
@@ -187,13 +188,14 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
   }
 }
 
+// Dialog INCHANGÉ (pas de flutter_map)
 class AddNidDialog extends StatefulWidget {
   final LatLng pos;
   final int autoNum;
-  AddNidDialog({required this.pos, required this.autoNum});
+  const AddNidDialog({super.key, required this.pos, required this.autoNum});
 
   @override
-  _AddNidDialogState createState() => _AddNidDialogState();
+  State<AddNidDialog> createState() => _AddNidDialogState();
 }
 
 class _AddNidDialogState extends State<AddNidDialog> {
@@ -208,50 +210,46 @@ class _AddNidDialogState extends State<AddNidDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(controller: _controller, decoration: InputDecoration(labelText: 'Remarque / État')),
-          SizedBox(height: 15),
-          if (_bytes != null) Image.memory(_bytes!, height: 100) else Text("Aucune image sélectionnée"),
-          SizedBox(height: 10),
+          TextField(controller: _controller, decoration: const InputDecoration(labelText: 'Remarque / État')),
+          const SizedBox(height: 15),
+          if (_bytes != null) Image.memory(_bytes!, height: 100) else const Text("Aucune image sélectionnée"),
+          const SizedBox(height: 10),
           ElevatedButton.icon(
             onPressed: () async {
               try {
                 final res = await FilePicker.platform.pickFiles(type: FileType.image);
-                if (res != null && res.files.single.bytes != null) setState(() => _bytes = res.files.single.bytes);
+                if (res != null && res.files.single.bytes != null) {
+                  setState(() => _bytes = res.files.single.bytes);
+                }
               } catch (e) {}
             },
-            icon: Icon(Icons.camera_alt),
-            label: Text('Prendre Photo'),
+            icon: const Icon(Icons.camera_alt),
+            label: const Text('Prendre Photo'),
           ),
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text('Annuler')),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
         ElevatedButton(
-          onPressed: _loading
-              ? null
-              : () async {
-                  if (_bytes == null || _controller.text.isEmpty) return;
+          onPressed: _loading || _bytes == null || _controller.text.isEmpty ? null : () async {
+            setState(() => _loading = true);
+            try {
+              final ref = FirebaseStorage.instance.ref().child('nids/${DateTime.now().millisecondsSinceEpoch}.jpg');
+              await ref.putData(_bytes!);
+              final url = await ref.getDownloadURL();
 
-                  setState(() => _loading = true);
-
-                  try {
-                    final ref = FirebaseStorage.instance.ref().child('nids/${DateTime.now().millisecondsSinceEpoch}.jpg');
-                    await ref.putData(_bytes!);
-                    final url = await ref.getDownloadURL();
-
-                    await FirebaseFirestore.instance.collection('nids').add({
-                      'num': widget.autoNum,
-                      'nid': _controller.text,
-                      'photoUrl': url,
-                      'pos': GeoPoint(widget.pos.latitude, widget.pos.longitude),
-                      'date': FieldValue.serverTimestamp(),
-                    });
-
-                    Navigator.pop(context);
-                  } catch (e) {
-                    setState(() => _loading = false);
-                  }
-                },
+              await FirebaseFirestore.instance.collection('nids').add({
+                'num': widget.autoNum,
+                'nid': _controller.text,
+                'photoUrl': url,
+                'pos': GeoPoint(widget.pos.latitude, widget.pos.longitude),
+                'date': FieldValue.serverTimestamp(),
+              });
+              if (mounted) Navigator.pop(context);
+            } catch (e) {
+              setState(() => _loading = false);
+            }
+          },
           child: Text(_loading ? 'Envoi...' : 'Valider'),
         ),
       ],
