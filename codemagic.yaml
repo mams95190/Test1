@@ -3,16 +3,13 @@ workflows:
     name: APK Clean Build
     environment:
       flutter: 3.41.1
-      vars:
-        CLOUD_FIRESTORE_VERSION: 6.1.2
-        FIREBASE_CORE_VERSION: 4.4.0
-        FIREBASE_STORAGE_VERSION: 13.0.6
+
     scripts:
-      - name: Create Android
-        script: flutter create --platforms android .
       - name: Get packages
         script: flutter pub get
+
       - name: Build APK Debug
         script: flutter build apk --debug
+
     artifacts:
       - build/app/outputs/**/*.apk
