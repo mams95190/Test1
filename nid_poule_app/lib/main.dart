@@ -1,122 +1,247 @@
+import 'dart:typed_data';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'firebase_options.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  runApp(NidPouleApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
+class NidPouleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      debugShowCheckedModeBanner: false,
+      title: 'Nid Poule Tracker',
+      theme: ThemeData(primarySwatch: Colors.red, useMaterial3: true),
+      home: NidDashboardScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
+class NidDashboardScreen extends StatefulWidget {
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _NidDashboardScreenState createState() => _NidDashboardScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _NidDashboardScreenState extends State<NidDashboardScreen> {
+  final _mapController = MapController();
+  final _firestore = FirebaseFirestore.instance;
+  String? _selectedId; // ID du nid sélectionné pour le highlight
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+  Future<int> _reserveNextNumber() async {
+    final counterRef = _firestore.collection('meta').doc('counter');
+    return await _firestore.runTransaction<int>((tx) async {
+      final snap = await tx.get(counterRef);
+      final current = (snap.data()?['nidCounter'] as int?) ?? 0;
+      final next = current + 1;
+      tx.set(counterRef, {'nidCounter': next}, SetOptions(merge: true));
+      return next;
     });
+  }
+
+  void _onNidSelected(LatLng pos, String id) {
+    setState(() => _selectedId = id);
+    _mapController.move(pos, 17.5); // Zoom puissant sur le nid
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text('🛠️ Nids de Poule Tracker', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 2,
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firestore.collection('nids').orderBy('date', descending: true).snapshots(),
+        builder: (context, snapshot) {
+          final docs = snapshot.data?.docs ?? [];
+          final markers = docs.map((d) => _buildMarker(d)).toList();
+
+          return Row(
+            children: [
+              // --- CARTE ---
+              Expanded(
+                flex: 7,
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: LatLng(50.8503, 4.3517),
+                    initialZoom: 13,
+                    onTap: (tapPos, latLng) async {
+                      final num = await _reserveNextNumber();
+                      showDialog(context: context, builder: (_) => AddNidDialog(pos: latLng, autoNum: num));
+                    },
+                  ),
+                  children: [
+                    TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+                    MarkerLayer(markers: markers),
+                  ],
+                ),
+              ),
+              // --- LISTE SIDEBAR ---
+              Expanded(
+                flex: 3,
+                child: Container(
+                  decoration: BoxDecoration(color: Colors.white, border: Border(left: BorderSide(color: Colors.grey.shade300))),
+                  child: ListView.builder(
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      final gp = data['pos'] as GeoPoint;
+                      final pos = LatLng(gp.latitude, gp.longitude);
+                      final isSelected = _selectedId == doc.id;
+
+                      return Container(
+                        color: isSelected ? Colors.green.withOpacity(0.1) : Colors.transparent,
+                        child: ListTile(
+                          selected: isSelected,
+                          leading: _thumbnail(data['photoUrl']),
+                          title: Text('Nid #${data['num']}', style: TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text(data['nid'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+                          onTap: () => _onNidSelected(pos, doc.id),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+Marker _buildMarker(QueryDocumentSnapshot doc) {
+  final data = doc.data() as Map<String, dynamic>;
+  final gp = data['pos'] as GeoPoint;
+  final pos = LatLng(gp.latitude, gp.longitude);
+  final isSelected = _selectedId == doc.id;
+  final Color color = isSelected ? Colors.green : Colors.red;
+
+  return Marker(
+    point: pos,
+    width: 48,
+    height: 48,
+    child: GestureDetector(
+      onTap: () => _onNidSelected(pos, doc.id),
+      child: Container(
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            // Point central
+            Icon(Icons.circle, color: Colors.white, size: 20),
+            // Numéro
+            Positioned(
+              bottom: 8,
+              child: Text(
+                '${data['num']}',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 2),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+    ),
+  );
+}
+
+
+
+  Widget _thumbnail(String? url) {
+    return Container(
+      width: 50, height: 50,
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey.shade200),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: url != null ? Image.network(url, fit: BoxFit.cover) : Icon(Icons.image),
       ),
+    );
+  }
+}
+
+class AddNidDialog extends StatefulWidget {
+  final LatLng pos;
+  final int autoNum;
+  AddNidDialog({required this.pos, required this.autoNum});
+  @override
+  _AddNidDialogState createState() => _AddNidDialogState();
+}
+
+class _AddNidDialogState extends State<AddNidDialog> {
+  final _controller = TextEditingController();
+  Uint8List? _bytes;
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('🚨 Nouveau Nid #${widget.autoNum}'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(controller: _controller, decoration: InputDecoration(labelText: 'Remarque / État')),
+          SizedBox(height: 15),
+          if (_bytes != null) Image.memory(_bytes!, height: 100),
+          ElevatedButton.icon(
+            onPressed: () async {
+              final res = await FilePicker.platform.pickFiles(type: FileType.image);
+              if (res != null) setState(() => _bytes = res.files.single.bytes);
+            },
+            icon: Icon(Icons.camera_alt),
+            label: Text('Prendre Photo'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text('Annuler')),
+        ElevatedButton(
+          onPressed: _loading ? null : () async {
+            if (_bytes == null || _controller.text.isEmpty) return;
+            setState(() => _loading = true);
+            final ref = FirebaseStorage.instance.ref().child('nids/${DateTime.now().millisecondsSinceEpoch}.jpg');
+            await ref.putData(_bytes!);
+            final url = await ref.getDownloadURL();
+            await FirebaseFirestore.instance.collection('nids').add({
+              'num': widget.autoNum,
+              'nid': _controller.text,
+              'photoUrl': url,
+              'pos': GeoPoint(widget.pos.latitude, widget.pos.longitude),
+              'date': FieldValue.serverTimestamp(),
+            });
+            Navigator.pop(context);
+          },
+          child: Text(_loading ? 'Envoi...' : 'Valider'),
+        ),
+      ],
     );
   }
 }
