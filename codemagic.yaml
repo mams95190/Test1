@@ -1,27 +1,27 @@
 workflows:
-  android-apk-clean-commit:
-    name: APK Clean Build Safe + Commit
+  android-apk-clean-create:
+    name: APK Clean Build with Android Create
     environment:
       flutter: 3.41.1
 
     scripts:
-      - name: Clean Flutter & Gradle
+      # --- 1️⃣ Nettoyage avant tout ---
+      - name: Clean Flutter
         script: |
+          echo "=== Nettoyage Flutter ==="
           flutter clean
-          rm -rf android/.gradle
-          rm -rf android/app/build
 
+      # --- 2️⃣ Créer le dossier Android proprement ---
+      - name: Create Android folder
+        script: |
+          echo "=== Création du dossier Android ==="
+          flutter create --platforms android .
+
+      # --- 3️⃣ Récupérer les packages Dart/Flutter ---
       - name: Get packages
         script: flutter pub get
 
-      - name: Commit changes (optional)
-        script: |
-          git config --global user.email "you@example.com"
-          git config --global user.name "Codemagic CI"
-          git add .
-          git commit -m "Clean project ready for build" || echo "No changes to commit"
-          git push origin main || echo "Push failed, maybe no rights"
-
+      # --- 4️⃣ Build APK debug ---
       - name: Build APK Debug
         script: flutter build apk --debug --no-shrink
 
