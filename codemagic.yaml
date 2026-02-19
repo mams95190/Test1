@@ -1,25 +1,34 @@
 workflows:
-  android-build:
+  android-workflow:
     name: Android Build
-    max_build_duration: 30
+    max_build_duration: 60
     environment:
-      flutter: 3.19.6   # ⚠️ Mets ici TA version flutter exacte
+      flutter: 3.41.1
       xcode: latest
+      cocoapods: default
       vars:
-        PACKAGE_NAME: "com.example.nid_poule_app"
+        FIREBASE_CORE_VERSION: 4.4.0
+        CLOUD_FIRESTORE_VERSION: 6.1.2
+        FIREBASE_STORAGE_VERSION: 13.0.6
     scripts:
-      - name: Get Flutter packages
+      - name: Install dependencies
         script: |
-          flutter clean
           flutter pub get
-
+      - name: Analyze
+        script: |
+          flutter analyze
+      - name: Run tests
+        script: |
+          flutter test
       - name: Build Android AppBundle
         script: |
-          flutter build appbundle --debug
-
+          flutter build appbundle --release
+      - name: Build APK
+        script: |
+          flutter build apk --release
     artifacts:
-      - build/app/outputs/**/*.aab
-
+      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/bundle/release/app-release.aab
     publishing:
       email:
         recipients:
