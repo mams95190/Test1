@@ -67,7 +67,6 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
 
           return Row(
             children: [
-              // --- CARTE ---
               Expanded(
                 flex: 7,
                 child: FlutterMap(
@@ -107,10 +106,7 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
                                 color: color,
                                 shape: BoxShape.circle,
                                 boxShadow: [
-                                  BoxShadow(
-                                      color: Colors.black.withOpacity(0.3),
-                                      blurRadius: 8,
-                                      spreadRadius: 1),
+                                  BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8, spreadRadius: 1),
                                 ],
                               ),
                               child: Stack(
@@ -126,10 +122,7 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                         shadows: [
-                                          Shadow(
-                                              color: Colors.black54,
-                                              offset: Offset(1, 1),
-                                              blurRadius: 2)
+                                          Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 2)
                                         ],
                                       ),
                                     ),
@@ -144,8 +137,6 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
                   ],
                 ),
               ),
-
-              // --- LISTE SIDEBAR ---
               Expanded(
                 flex: 3,
                 child: Container(
@@ -196,7 +187,6 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
   }
 }
 
-// --- AddNidDialog corrigé ---
 class AddNidDialog extends StatefulWidget {
   final LatLng pos;
   final int autoNum;
@@ -218,33 +208,16 @@ class _AddNidDialogState extends State<AddNidDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
-            controller: _controller,
-            decoration: InputDecoration(labelText: 'Remarque / État'),
-          ),
+          TextField(controller: _controller, decoration: InputDecoration(labelText: 'Remarque / État')),
           SizedBox(height: 15),
-          if (_bytes != null)
-            Image.memory(_bytes!, height: 100)
-          else
-            Text("Aucune image sélectionnée"),
+          if (_bytes != null) Image.memory(_bytes!, height: 100) else Text("Aucune image sélectionnée"),
           SizedBox(height: 10),
           ElevatedButton.icon(
             onPressed: () async {
               try {
                 final res = await FilePicker.platform.pickFiles(type: FileType.image);
-                if (res != null && res.files.single.bytes != null) {
-                  setState(() => _bytes = res.files.single.bytes);
-                  print("Bytes length: ${_bytes!.length}");
-                } else {
-                  print("Aucun fichier ou fichier vide");
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(SnackBar(content: Text("Aucun fichier ou fichier vide")));
-                }
-              } catch (e) {
-                print("Erreur file picker: $e");
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text("Erreur file picker: $e")));
-              }
+                if (res != null && res.files.single.bytes != null) setState(() => _bytes = res.files.single.bytes);
+              } catch (e) {}
             },
             icon: Icon(Icons.camera_alt),
             label: Text('Prendre Photo'),
@@ -257,23 +230,14 @@ class _AddNidDialogState extends State<AddNidDialog> {
           onPressed: _loading
               ? null
               : () async {
-                  if (_bytes == null || _controller.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Remplis le texte et choisis une image !")),
-                    );
-                    return;
-                  }
+                  if (_bytes == null || _controller.text.isEmpty) return;
 
                   setState(() => _loading = true);
 
                   try {
-                    final ref = FirebaseStorage.instance
-                        .ref()
-                        .child('nids/${DateTime.now().millisecondsSinceEpoch}.jpg');
-
+                    final ref = FirebaseStorage.instance.ref().child('nids/${DateTime.now().millisecondsSinceEpoch}.jpg');
                     await ref.putData(_bytes!);
                     final url = await ref.getDownloadURL();
-                    print("Upload réussi, url: $url");
 
                     await FirebaseFirestore.instance.collection('nids').add({
                       'num': widget.autoNum,
@@ -285,9 +249,6 @@ class _AddNidDialogState extends State<AddNidDialog> {
 
                     Navigator.pop(context);
                   } catch (e) {
-                    print("Erreur upload: $e");
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text("Erreur upload: $e")));
                     setState(() => _loading = false);
                   }
                 },
@@ -297,4 +258,3 @@ class _AddNidDialogState extends State<AddNidDialog> {
     );
   }
 }
-
