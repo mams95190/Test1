@@ -78,11 +78,21 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
                     initialZoom: 13,
                     onTap: (tapPos, latLng) async {
                       final num = await _reserveNextNumber();
-                      showDialog(context: context, builder: (_) => AddNidDialog(pos: latLng, autoNum: num));
+                      showDialog(
+                        context: context,
+                        builder: (_) => AddNidDialog(pos: latLng, autoNum: num),
+                      );
                     },
                   ),
                   children: [
-                    TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+                    // --- TileLayer corrigé pour OSM ---
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.nidpoule',
+                      attributionBuilder: (_) {
+                        return Text("© OpenStreetMap contributors");
+                      },
+                    ),
                     MarkerLayer(markers: markers),
                   ],
                 ),
@@ -91,7 +101,10 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
               Expanded(
                 flex: 3,
                 child: Container(
-                  decoration: BoxDecoration(color: Colors.white, border: Border(left: BorderSide(color: Colors.grey.shade300))),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(left: BorderSide(color: Colors.grey.shade300)),
+                  ),
                   child: ListView.builder(
                     itemCount: docs.length,
                     itemBuilder: (context, index) {
@@ -122,63 +135,60 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
     );
   }
 
-Marker _buildMarker(QueryDocumentSnapshot doc) {
-  final data = doc.data() as Map<String, dynamic>;
-  final gp = data['pos'] as GeoPoint;
-  final pos = LatLng(gp.latitude, gp.longitude);
-  final isSelected = _selectedId == doc.id;
-  final Color color = isSelected ? Colors.green : Colors.red;
+  Marker _buildMarker(QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final gp = data['pos'] as GeoPoint;
+    final pos = LatLng(gp.latitude, gp.longitude);
+    final isSelected = _selectedId == doc.id;
+    final Color color = isSelected ? Colors.green : Colors.red;
 
-  return Marker(
-    point: pos,
-    width: 48,
-    height: 48,
-    child: GestureDetector(
-      onTap: () => _onNidSelected(pos, doc.id),
-      child: Container(
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 8,
-              spreadRadius: 1,
-            ),
-          ],
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Point central
-            Icon(Icons.circle, color: Colors.white, size: 20),
-            // Numéro
-            Positioned(
-              bottom: 8,
-              child: Text(
-                '${data['num']}',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  shadows: [
-                    Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 2),
-                  ],
+    return Marker(
+      point: pos,
+      width: 48,
+      height: 48,
+      child: GestureDetector(
+        onTap: () => _onNidSelected(pos, doc.id),
+        child: Container(
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(Icons.circle, color: Colors.white, size: 20),
+              Positioned(
+                bottom: 8,
+                child: Text(
+                  '${data['num']}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 2),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
-
-
+    );
+  }
 
   Widget _thumbnail(String? url) {
     return Container(
-      width: 50, height: 50,
+      width: 50,
+      height: 50,
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey.shade200),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
@@ -224,21 +234,25 @@ class _AddNidDialogState extends State<AddNidDialog> {
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: Text('Annuler')),
         ElevatedButton(
-          onPressed: _loading ? null : () async {
-            if (_bytes == null || _controller.text.isEmpty) return;
-            setState(() => _loading = true);
-            final ref = FirebaseStorage.instance.ref().child('nids/${DateTime.now().millisecondsSinceEpoch}.jpg');
-            await ref.putData(_bytes!);
-            final url = await ref.getDownloadURL();
-            await FirebaseFirestore.instance.collection('nids').add({
-              'num': widget.autoNum,
-              'nid': _controller.text,
-              'photoUrl': url,
-              'pos': GeoPoint(widget.pos.latitude, widget.pos.longitude),
-              'date': FieldValue.serverTimestamp(),
-            });
-            Navigator.pop(context);
-          },
+          onPressed: _loading
+              ? null
+              : () async {
+                  if (_bytes == null || _controller.text.isEmpty) return;
+                  setState(() => _loading = true);
+                  final ref = FirebaseStorage.instance
+                      .ref()
+                      .child('nids/${DateTime.now().millisecondsSinceEpoch}.jpg');
+                  await ref.putData(_bytes!);
+                  final url = await ref.getDownloadURL();
+                  await FirebaseFirestore.instance.collection('nids').add({
+                    'num': widget.autoNum,
+                    'nid': _controller.text,
+                    'photoUrl': url,
+                    'pos': GeoPoint(widget.pos.latitude, widget.pos.longitude),
+                    'date': FieldValue.serverTimestamp(),
+                  });
+                  Navigator.pop(context);
+                },
           child: Text(_loading ? 'Envoi...' : 'Valider'),
         ),
       ],
