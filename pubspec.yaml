@@ -1,6 +1,7 @@
 name: nid_poule_app
 description: Nids de poule tracker
 publish_to: "none"
+
 version: 1.0.0+1
 
 environment:
@@ -9,6 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
   flutter_map: ^8.2.2
   latlong2: ^0.9.1
   firebase_core: ^4.4.0
@@ -20,3 +24,10 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Si tu as des images plus tard :
+  # assets:
+  #   - assets/images/
