@@ -1,11 +1,11 @@
 import 'dart:typed_data';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:file_picker/file_picker.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -34,7 +34,7 @@ class NidDashboardScreen extends StatefulWidget {
 class _NidDashboardScreenState extends State<NidDashboardScreen> {
   final _mapController = MapController();
   final _firestore = FirebaseFirestore.instance;
-  String? _selectedId; // ID du nid sélectionné pour le highlight
+  String? _selectedId;
 
   Future<int> _reserveNextNumber() async {
     final counterRef = _firestore.collection('meta').doc('counter');
@@ -49,7 +49,7 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
 
   void _onNidSelected(LatLng pos, String id) {
     setState(() => _selectedId = id);
-    _mapController.move(pos, 17.5); // Zoom puissant sur le nid
+    _mapController.move(pos, 17.5);
   }
 
   @override
@@ -64,7 +64,6 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
         stream: _firestore.collection('nids').orderBy('date', descending: true).snapshots(),
         builder: (context, snapshot) {
           final docs = snapshot.data?.docs ?? [];
-          final markers = docs.map((d) => _buildMarker(d)).toList();
 
           return Row(
             children: [
@@ -74,8 +73,8 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
                 child: FlutterMap(
                   mapController: _mapController,
                   options: MapOptions(
-                    initialCenter: LatLng(50.8503, 4.3517),
-                    initialZoom: 13,
+                    center: LatLng(50.8503, 4.3517),
+                    zoom: 13,
                     onTap: (tapPos, latLng) async {
                       final num = await _reserveNextNumber();
                       showDialog(
@@ -84,19 +83,68 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
                       );
                     },
                   ),
-                  children: [
-                    // --- TileLayer corrigé pour OSM ---
+                  nonRotatedChildren: [
                     TileLayer(
                       urlTemplate: 'https://tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.nidpoule',
-                      attributionBuilder: (_) {
-                        return Text("© OpenStreetMap contributors");
-                      },
                     ),
-                    MarkerLayer(markers: markers),
+                    MarkerLayer(
+                      markers: docs.map((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final gp = data['pos'] as GeoPoint;
+                        final pos = LatLng(gp.latitude, gp.longitude);
+                        final isSelected = _selectedId == doc.id;
+                        final color = isSelected ? Colors.green : Colors.red;
+
+                        return Marker(
+                          point: pos,
+                          width: 48,
+                          height: 48,
+                          builder: (ctx) => GestureDetector(
+                            onTap: () => _onNidSelected(pos, doc.id),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      spreadRadius: 1),
+                                ],
+                              ),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Icon(Icons.circle, color: Colors.white, size: 20),
+                                  Positioned(
+                                    bottom: 8,
+                                    child: Text(
+                                      '${data['num']}',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        shadows: [
+                                          Shadow(
+                                              color: Colors.black54,
+                                              offset: Offset(1, 1),
+                                              blurRadius: 2)
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ],
                 ),
               ),
+
               // --- LISTE SIDEBAR ---
               Expanded(
                 flex: 3,
@@ -135,56 +183,6 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
     );
   }
 
-  Marker _buildMarker(QueryDocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    final gp = data['pos'] as GeoPoint;
-    final pos = LatLng(gp.latitude, gp.longitude);
-    final isSelected = _selectedId == doc.id;
-    final Color color = isSelected ? Colors.green : Colors.red;
-
-    return Marker(
-      point: pos,
-      width: 48,
-      height: 48,
-      child: GestureDetector(
-        onTap: () => _onNidSelected(pos, doc.id),
-        child: Container(
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 8,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Icon(Icons.circle, color: Colors.white, size: 20),
-              Positioned(
-                bottom: 8,
-                child: Text(
-                  '${data['num']}',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 2),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _thumbnail(String? url) {
     return Container(
       width: 50,
@@ -198,10 +196,12 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
   }
 }
 
+// --- AddNidDialog corrigé ---
 class AddNidDialog extends StatefulWidget {
   final LatLng pos;
   final int autoNum;
   AddNidDialog({required this.pos, required this.autoNum});
+
   @override
   _AddNidDialogState createState() => _AddNidDialogState();
 }
@@ -218,13 +218,33 @@ class _AddNidDialogState extends State<AddNidDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(controller: _controller, decoration: InputDecoration(labelText: 'Remarque / État')),
+          TextField(
+            controller: _controller,
+            decoration: InputDecoration(labelText: 'Remarque / État'),
+          ),
           SizedBox(height: 15),
-          if (_bytes != null) Image.memory(_bytes!, height: 100),
+          if (_bytes != null)
+            Image.memory(_bytes!, height: 100)
+          else
+            Text("Aucune image sélectionnée"),
+          SizedBox(height: 10),
           ElevatedButton.icon(
             onPressed: () async {
-              final res = await FilePicker.platform.pickFiles(type: FileType.image);
-              if (res != null) setState(() => _bytes = res.files.single.bytes);
+              try {
+                final res = await FilePicker.platform.pickFiles(type: FileType.image);
+                if (res != null && res.files.single.bytes != null) {
+                  setState(() => _bytes = res.files.single.bytes);
+                  print("Bytes length: ${_bytes!.length}");
+                } else {
+                  print("Aucun fichier ou fichier vide");
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text("Aucun fichier ou fichier vide")));
+                }
+              } catch (e) {
+                print("Erreur file picker: $e");
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text("Erreur file picker: $e")));
+              }
             },
             icon: Icon(Icons.camera_alt),
             label: Text('Prendre Photo'),
@@ -237,21 +257,39 @@ class _AddNidDialogState extends State<AddNidDialog> {
           onPressed: _loading
               ? null
               : () async {
-                  if (_bytes == null || _controller.text.isEmpty) return;
+                  if (_bytes == null || _controller.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Remplis le texte et choisis une image !")),
+                    );
+                    return;
+                  }
+
                   setState(() => _loading = true);
-                  final ref = FirebaseStorage.instance
-                      .ref()
-                      .child('nids/${DateTime.now().millisecondsSinceEpoch}.jpg');
-                  await ref.putData(_bytes!);
-                  final url = await ref.getDownloadURL();
-                  await FirebaseFirestore.instance.collection('nids').add({
-                    'num': widget.autoNum,
-                    'nid': _controller.text,
-                    'photoUrl': url,
-                    'pos': GeoPoint(widget.pos.latitude, widget.pos.longitude),
-                    'date': FieldValue.serverTimestamp(),
-                  });
-                  Navigator.pop(context);
+
+                  try {
+                    final ref = FirebaseStorage.instance
+                        .ref()
+                        .child('nids/${DateTime.now().millisecondsSinceEpoch}.jpg');
+
+                    await ref.putData(_bytes!);
+                    final url = await ref.getDownloadURL();
+                    print("Upload réussi, url: $url");
+
+                    await FirebaseFirestore.instance.collection('nids').add({
+                      'num': widget.autoNum,
+                      'nid': _controller.text,
+                      'photoUrl': url,
+                      'pos': GeoPoint(widget.pos.latitude, widget.pos.longitude),
+                      'date': FieldValue.serverTimestamp(),
+                    });
+
+                    Navigator.pop(context);
+                  } catch (e) {
+                    print("Erreur upload: $e");
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text("Erreur upload: $e")));
+                    setState(() => _loading = false);
+                  }
                 },
           child: Text(_loading ? 'Envoi...' : 'Valider'),
         ),
@@ -259,3 +297,4 @@ class _AddNidDialogState extends State<AddNidDialog> {
     );
   }
 }
+

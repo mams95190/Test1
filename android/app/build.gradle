@@ -1,25 +1,18 @@
-apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-
-android {
-    compileSdkVersion 36
-
-    defaultConfig {
-        applicationId "com.example.nidpoule"
-        minSdkVersion 21
-        targetSdkVersion 36
-        versionCode 1
-        versionName "1.0"
+buildscript {
+    ext.kotlin_version = '1.8.10'
+    repositories {
+        google()
+        mavenCentral()
     }
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.0'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
 
-dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.8.10"
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
 }
