@@ -10,22 +10,22 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Flutter map compatible avec ton code actuel
+  # Flutter map compatible avec ton main
   flutter_map: 3.1.0
   latlong2: 0.8.1
 
-  # Firebase : versions compatibles entre elles
-  firebase_core: 2.25.0
-  cloud_firestore: 4.9.0
-  firebase_storage: 10.4.3
+  # Firebase
+  firebase_core: ^2.25.0
+  cloud_firestore: ^4.9.0
+  firebase_storage: ^11.3.0
 
   # File picker
-  file_picker: 5.3.0
+  file_picker: ^5.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: 6.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true
