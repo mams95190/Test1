@@ -1,0 +1,14 @@
+workflows:
+  android-build:
+    name: Android Build
+    environment:
+      flutter: stable
+      vars:
+        CLOUD_FIRESTORE_VERSION: 6.1.2
+        FIREBASE_CORE_VERSION: 4.4.0
+        FIREBASE_STORAGE_VERSION: 13.0.6
+    scripts:
+      - flutter pub get
+      - flutter build appbundle --debug
+    artifacts:
+      - build/**/outputs/**/*.aab
