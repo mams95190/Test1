@@ -1,31 +1,56 @@
 workflows:
-  android-apk-clean-create:
-    name: APK Clean Build + Android Create
+  android-apk-complete:
+    name: APK Full - Carte + Photos + GPS
     environment:
       flutter: 3.41.1
 
     scripts:
-      # --- 1️⃣ Nettoyage Flutter ---
-      - name: Clean Flutter
+      - name: Clean
         script: |
-          echo "=== Nettoyage Flutter ==="
           flutter clean
-          rm -rf android/.gradle
-          rm -rf android/app/build
+          rm -rf android/.gradle android/app/build
 
-      # --- 2️⃣ Récupérer les packages Dart/Flutter AVANT la création Android ---
       - name: Get packages
         script: flutter pub get
 
-      # --- 3️⃣ Créer le dossier Android proprement ---
-      - name: Create Android folder
+      - name: Create Android + Permissions + Network
         script: |
-          echo "=== Création du dossier Android ==="
           flutter create --platforms android .
+          
+          # ✅ Permissions complètes
+          cat >> android/app/src/main/AndroidManifest.xml << 'EOF'
+      <uses-permission android:name="android.permission.INTERNET" />
+      <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+      <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+      <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+      <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+      <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+      <uses-permission android:name="android.permission.CAMERA" />
+          EOF
 
-      # --- 4️⃣ Build APK debug ---
-      - name: Build APK Debug
-        script: flutter build apk --debug --no-shrink
+          # ✅ Network config pour tiles
+          mkdir -p android/app/src/main/res/xml
+          cat > android/app/src/main/res/xml/network_security_config.xml << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">tile.openstreetmap.org</domain>
+        <domain includeSubdomains="true">tile.openstreetmap.fr</domain>
+    </domain-config>
+</network-security-config>
+EOF
+
+          # ✅ Application networkSecurityConfig
+          sed -i 's/<application /<application android:networkSecurityConfig="@xml/network_security_config" /' android/app/src/main/AndroidManifest.xml
+
+      - name: Gradle reset
+        script: |
+          cd android
+          ./gradlew clean --stop
+          cd ..
+
+      - name: Build APK
+        script: flutter build apk --debug
 
     artifacts:
       - build/app/outputs/**/*.apk
