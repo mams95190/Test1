@@ -11,24 +11,28 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(NidPouleApp());
+  runApp(const NidPouleApp());
 }
 
 class NidPouleApp extends StatelessWidget {
+  const NidPouleApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Nid Poule Tracker',
       theme: ThemeData(primarySwatch: Colors.red, useMaterial3: true),
-      home: NidDashboardScreen(),
+      home: const NidDashboardScreen(),
     );
   }
 }
 
 class NidDashboardScreen extends StatefulWidget {
+  const NidDashboardScreen({super.key});
+
   @override
-  _NidDashboardScreenState createState() => _NidDashboardScreenState();
+  State<NidDashboardScreen> createState() => _NidDashboardScreenState();
 }
 
 class _NidDashboardScreenState extends State<NidDashboardScreen> {
@@ -56,33 +60,36 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('🛠️ Nids de Poule Tracker', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('🛠️ Nids de Poule Tracker', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 2,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore.collection('nids').orderBy('date', descending: true).snapshots(),
+        stream: _firestore.collection('nids').orderBy('date', descending: true).limit(100).snapshots(),
         builder: (context, snapshot) {
           final docs = snapshot.data?.docs ?? [];
 
           return Row(
             children: [
+              // ✅ Flex équilibré 60/40
               Expanded(
-                flex: 7,
-                child: FlutterMap(  // ✅ nonRotatedChildren → children
+                flex: 6,
+                child: FlutterMap(
                   mapController: _mapController,
-                  options: MapOptions(  // ✅ center → initialCenter
+                  options: MapOptions(
                     initialCenter: LatLng(50.8503, 4.3517),
-                    initialZoom: 13,  // ✅ Ajouté (requis)
-                    onTap: (tapPosition, point) async {  // ✅ Signature changée
+                    initialZoom: 13,
+                    onTap: (tapPosition, point) async {
                       final num = await _reserveNextNumber();
-                      showDialog(
-                        context: context,
-                        builder: (_) => AddNidDialog(pos: point, autoNum: num),
-                      );
+                      if (mounted) {
+                        showDialog(
+                          context: context,
+                          builder: (_) => AddNidDialog(pos: point, autoNum: num),
+                        );
+                      }
                     },
                   ),
-                  children: [  // ✅ Structure moderne
+                  children: [
                     TileLayer(
                       urlTemplate: 'https://tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.nidpoule',
@@ -99,25 +106,29 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
                           point: pos,
                           width: 48,
                           height: 48,
-                          child: GestureDetector(  // ✅ builder → child
+                          child: GestureDetector(
                             onTap: () => _onNidSelected(pos, doc.id),
                             child: Container(
                               decoration: BoxDecoration(
                                 color: color,
                                 shape: BoxShape.circle,
                                 boxShadow: [
-                                  BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8, spreadRadius: 1),
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
                                 ],
                               ),
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
-                                  Icon(Icons.circle, color: Colors.white, size: 20),
+                                  const Icon(Icons.circle, color: Colors.white, size: 20),
                                   Positioned(
                                     bottom: 8,
                                     child: Text(
                                       '${data['num']}',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -137,13 +148,12 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
                   ],
                 ),
               ),
-              // Reste du code LISTE inchangé...
               Expanded(
-                flex: 3,
+                flex: 4,  // ✅ Équilibré
                 child: Container(
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: Colors.white,
-                    border: Border(left: BorderSide(color: Colors.grey.shade300)),
+                    border: Border(left: BorderSide(color: Color(0xFFE0E0E0))),
                   ),
                   child: ListView.builder(
                     itemCount: docs.length,
@@ -159,8 +169,12 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
                         child: ListTile(
                           selected: isSelected,
                           leading: _thumbnail(data['photoUrl']),
-                          title: Text('Nid #${data['num']}', style: TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(data['nid'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+                          title: Text('Nid #${data['num']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text(
+                            data['nid'] ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           onTap: () => _onNidSelected(pos, doc.id),
                         ),
                       );
@@ -172,6 +186,10 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
           );
         },
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _mapController.move(LatLng(50.8503, 4.3517), 13),
+        child: const Icon(Icons.my_location),
+      ),
     );
   }
 
@@ -179,16 +197,20 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
     return Container(
       width: 50,
       height: 50,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey.shade200),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: Colors.grey.shade200,
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: url != null ? Image.network(url, fit: BoxFit.cover) : Icon(Icons.image),
+        child: url != null
+            ? Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.image))
+            : const Icon(Icons.image),
       ),
     );
   }
 }
 
-// Dialog INCHANGÉ (pas de flutter_map)
 class AddNidDialog extends StatefulWidget {
   final LatLng pos;
   final int autoNum;
@@ -202,55 +224,127 @@ class _AddNidDialogState extends State<AddNidDialog> {
   final _controller = TextEditingController();
   Uint8List? _bytes;
   bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  bool get _canSubmit => !_loading && _bytes != null && _controller.text.trim().isNotEmpty;
+
+  Future<void> _pickImage() async {
+    try {
+      setState(() => _error = null);
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
+      
+      if (result != null && result.files.single.bytes != null) {
+        setState(() => _bytes = result.files.single.bytes);
+      } else {
+        setState(() => _error = 'Aucune image sélectionnée');
+      }
+    } catch (e) {
+      setState(() => _error = 'Erreur sélection: $e');
+      debugPrint('FilePicker error: $e');
+    }
+  }
+
+  Future<void> _submit() async {
+    if (!_canSubmit) return;
+    
+    setState(() => _loading = true);
+    try {
+      final fileName = 'nids/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final ref = FirebaseStorage.instance.ref().child(fileName);
+      final uploadTask = ref.putData(_bytes!);
+      
+      final snapshot = await uploadTask;
+      final photoUrl = await snapshot.ref.getDownloadURL();
+
+      await FirebaseFirestore.instance.collection('nids').add({
+        'num': widget.autoNum,
+        'nid': _controller.text.trim(),
+        'photoUrl': photoUrl,
+        'pos': GeoPoint(widget.pos.latitude, widget.pos.longitude),
+        'date': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      debugPrint('Submit error: $e');
+      setState(() {
+        _loading = false;
+        _error = 'Erreur envoi: $e';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text('🚨 Nouveau Nid #${widget.autoNum}'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(controller: _controller, decoration: const InputDecoration(labelText: 'Remarque / État')),
-          const SizedBox(height: 15),
-          if (_bytes != null) Image.memory(_bytes!, height: 100) else const Text("Aucune image sélectionnée"),
-          const SizedBox(height: 10),
-          ElevatedButton.icon(
-            onPressed: () async {
-              try {
-                final res = await FilePicker.platform.pickFiles(type: FileType.image);
-                if (res != null && res.files.single.bytes != null) {
-                  setState(() => _bytes = res.files.single.bytes);
-                }
-              } catch (e) {}
-            },
-            icon: const Icon(Icons.camera_alt),
-            label: const Text('Prendre Photo'),
-          ),
-        ],
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _controller,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Description du nid *',
+                errorText: _error,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              height: 120,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.grey.shade100,
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: _bytes != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.memory(_bytes!, fit: BoxFit.cover),
+                    )
+                  : const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_photo_alternate, size: 48, color: Colors.grey),
+                          Text('Appuie pour photo', style: TextStyle(color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _pickImage,
+                icon: const Icon(Icons.photo_camera),
+                label: const Text('📸 Sélectionner photo'),
+                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+              ),
+            ),
+          ],
+        ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('❌ Annuler'),
+        ),
         ElevatedButton(
-          onPressed: _loading || _bytes == null || _controller.text.isEmpty ? null : () async {
-            setState(() => _loading = true);
-            try {
-              final ref = FirebaseStorage.instance.ref().child('nids/${DateTime.now().millisecondsSinceEpoch}.jpg');
-              await ref.putData(_bytes!);
-              final url = await ref.getDownloadURL();
-
-              await FirebaseFirestore.instance.collection('nids').add({
-                'num': widget.autoNum,
-                'nid': _controller.text,
-                'photoUrl': url,
-                'pos': GeoPoint(widget.pos.latitude, widget.pos.longitude),
-                'date': FieldValue.serverTimestamp(),
-              });
-              if (mounted) Navigator.pop(context);
-            } catch (e) {
-              setState(() => _loading = false);
-            }
-          },
-          child: Text(_loading ? 'Envoi...' : 'Valider'),
+          onPressed: _canSubmit ? _submit : null,
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+          child: Text(_loading ? '⏳ Envoi...' : '✅ Publier'),
         ),
       ],
     );
