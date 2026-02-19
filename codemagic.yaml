@@ -1,25 +1,27 @@
 workflows:
   android-apk-clean-create:
-    name: APK Clean Build with Android Create
+    name: APK Clean Build + Android Create
     environment:
       flutter: 3.41.1
 
     scripts:
-      # --- 1️⃣ Nettoyage avant tout ---
+      # --- 1️⃣ Nettoyage Flutter ---
       - name: Clean Flutter
         script: |
           echo "=== Nettoyage Flutter ==="
           flutter clean
+          rm -rf android/.gradle
+          rm -rf android/app/build
 
-      # --- 2️⃣ Créer le dossier Android proprement ---
+      # --- 2️⃣ Récupérer les packages Dart/Flutter AVANT la création Android ---
+      - name: Get packages
+        script: flutter pub get
+
+      # --- 3️⃣ Créer le dossier Android proprement ---
       - name: Create Android folder
         script: |
           echo "=== Création du dossier Android ==="
           flutter create --platforms android .
-
-      # --- 3️⃣ Récupérer les packages Dart/Flutter ---
-      - name: Get packages
-        script: flutter pub get
 
       # --- 4️⃣ Build APK debug ---
       - name: Build APK Debug
