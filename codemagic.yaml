@@ -1,49 +1,89 @@
 workflows:
-  android-apk-complete:
-    name: APK Full - Carte + Photos + GPS
+  android-full-featured:
+    name: APK Pro - Carte + GPS + Photos
     environment:
       flutter: 3.41.1
 
     scripts:
-      - name: Clean
+      - name: Clean everything
         script: |
+          rm -rf android ios web
           flutter clean
-          rm -rf android/.gradle android/app/build
 
       - name: Get packages
         script: flutter pub get
 
-      - name: Create Android + Permissions + Network
-        script: |
-          flutter create --platforms android .
-          
-          # ✅ Permissions complètes
-          cat >> android/app/src/main/AndroidManifest.xml << 'EOF'
-      <uses-permission android:name="android.permission.INTERNET" />
-      <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-      <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-      <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-      <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-      <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-      <uses-permission android:name="android.permission.CAMERA" />
-          EOF
+      - name: Create platforms
+        script: flutter create --platforms android .
 
-          # ✅ Network config pour tiles
+      # ✅ Permissions + NetworkSecurityConfig
+      - name: Setup Android permissions & network
+        script: |
+          # Permissions
           mkdir -p android/app/src/main/res/xml
+          
+          # Network config pour tiles OSM
           cat > android/app/src/main/res/xml/network_security_config.xml << 'EOF'
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="false">
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+    <domain-config>
         <domain includeSubdomains="true">tile.openstreetmap.org</domain>
         <domain includeSubdomains="true">tile.openstreetmap.fr</domain>
+        <domain includeSubdomains="true">a.tile.openstreetmap.org</domain>
+        <domain includeSubdomains="true">b.tile.openstreetmap.org</domain>
+        <domain includeSubdomains="true">c.tile.openstreetmap.org</domain>
     </domain-config>
 </network-security-config>
 EOF
 
-          # ✅ Application networkSecurityConfig
-          sed -i 's/<application /<application android:networkSecurityConfig="@xml/network_security_config" /' android/app/src/main/AndroidManifest.xml
+          # Permissions + networkSecurityConfig
+          cat > android/app/src/main/AndroidManifest.xml << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <!-- ✅ Permissions critiques -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
-      - name: Gradle reset
+    <application 
+        android:label="NidPoule" 
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="@xml/network_security_config">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"/>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+</manifest>
+EOF
+
+      - name: Gradle clean
         script: |
           cd android
           ./gradlew clean --stop
