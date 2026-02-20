@@ -16,21 +16,18 @@ dependencies:
   firebase_storage: ^12.3.3
   file_picker: ^8.1.2
   geolocator: ^13.0.1
-  image_picker: ^1.1.2  # Photos/Camera
-  camera: ^0.11.0+1     # Camera native
+  image_picker: ^1.1.2
+  camera: ^0.11.0+1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-  flutter_launcher_icons: ^0.14.1  # Icônes
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
-  
-  # LAUNCHER ICONS (obligatoire)
-  flutter_launcher_icons:
-    android: "launcher_icon"
-    image_path: "assets/icon.png"  # Créez 1024x1024 PNG
 
-# Permissions auto via plugins
+flutter_launcher_icons:  # ← ICI APRÈS flutter: !!
+  android: true
+  image_path: "assets/icon.png"
