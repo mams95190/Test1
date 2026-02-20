@@ -4,27 +4,24 @@ workflows:
     environment:
       flutter: 3.41.1
     scripts:
-      - name: Clean and deps
-        script: |
-          flutter clean
-          flutter pub get
-          if [ -f assets/icon.png ]; then flutter pub run flutter_launcher_icons:main; else echo "Icon absent, icône par défaut"; fi
-      - name: Create platform
+      - name: Clean deps icons
+        script: flutter clean && flutter pub get && ( [ -f assets/icon.png ] && flutter pub run flutter_launcher_icons:main || echo "No icon" )
+      - name: Create android
         script: flutter create --platforms android .
-      - name: Network config
+      - name: Add network config
+        script: mkdir -p android/app/src/main/res/xml && echo '<?xml version="1.0"?><network-security-config><domain includeSubdomains="true">*.openstreetmap.org</domain></network-security-config>' > android/app/src/main/res/xml/network_security_config.xml
+      - name: Patch manifest
         script: |
-          mkdir -p android/app/src/main/res/xml
-          echo '<?xml version="1.0"?><network-security-config><domain includeSubdomains="true">*.openstreetmap.org</domain></network-security-config>' > android/app/src/main/res/xml/network_security_config.xml
-      - name: Permissions
-        script: |
-          sed -i.bak '/<manifest>/a <uses-permission android:name="android.permission.INTERNET"/>\\
-  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\\
-  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\\
-  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\\
-  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\\
-  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\\
-  <uses-permission android:name="android.permission.CAMERA"/>' android/app/src/main/AndroidManifest.xml
-          sed -i.bak 's/<application /<application android:networkSecurityConfig="@xml/network_security_config" /' android/app/src/main/AndroidManifest.xml
+          cat >> android/app/src/main/AndroidManifest.xml << 'PERMISSIONS'
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+  <uses-permission android:name="android.permission.CAMERA"/>
+PERMISSIONS
+          sed -i 's|<application |<application android:networkSecurityConfig="@xml/network_security_config" |' android/app/src/main/AndroidManifest.xml
       - name: Build APK
         script: flutter build apk --debug
     artifacts:
