@@ -1,30 +1,25 @@
 workflows:
-  android-apk-clean-commit:
-    name: APK Clean Build Safe + Commit
+  android-full-featured:
+    name: APK Pro - Carte + GPS + Photos
     environment:
       flutter: 3.41.1
-
     scripts:
-      - name: Clean Flutter & Gradle
-        script: |
-          echo "=== Nettoyage Flutter & Gradle ==="
-          flutter clean
-          rm -rf android/.gradle
-          rm -rf android/app/build
-
-      - name: Get packages
-        script: flutter pub get
-
-      - name: Commit changes (optional)
-        script: |
-          git config --global user.email "you@example.com"
-          git config --global user.name "Codemagic CI"
-          git add .
-          git commit -m "Clean project ready for build" || echo "No changes to commit"
-          git push origin main || echo "Push failed, maybe no rights"
-
-      - name: Build APK Debug
-        script: flutter build apk --debug --no-shrink
-
+      - flutter clean
+      - flutter pub get
+      - '[ -f assets/icon.png ] && flutter pub run flutter_launcher_icons:main || echo "no icon"'
+      - flutter create --platforms android .
+      - mkdir -p android/app/src/main/res/xml
+      - echo PD94bWwgdmVyc2lvbj0iMS4wIj8+PG5ldHdvcmtzZWN1cml0eS1jb25maWc+PGRvbWFpbiBpbmNsdWRlU3ViZG9tYWlucz0idHJ1ZSI+Ki5vcGVuc3RyZWV0bWFwLm9yZzwvZG9tYWluPjwvbmV0d29yay1zZWN1cml0eS1jb25maWc+ | base64 -d > android/app/src/main/res/xml/network_security_config.xml
+      - 'PERMS="<uses-permission android:name=\\"android.permission.INTERNET\\"/>"; sed -i "s|<manifest |<manifest\
+  $PERMS |" android/app/src/main/AndroidManifest.xml'
+      - 'sed -i "s|<uses-permission android:name=\\"android.permission.INTERNET\\"/>|<uses-permission android:name=\\"android.permission.INTERNET\\"/>\\
+  <uses-permission android:name=\\"android.permission.ACCESS_NETWORK_STATE\\"/>\\
+  <uses-permission android:name=\\"android.permission.ACCESS_FINE_LOCATION\\"/>\\
+  <uses-permission android:name=\\"android.permission.ACCESS_COARSE_LOCATION\\"/>\\
+  <uses-permission android:name=\\"android.permission.READ_EXTERNAL_STORAGE\\"/>\\
+  <uses-permission android:name=\\"android.permission.READ_MEDIA_IMAGES\\"/>\\
+  <uses-permission android:name=\\"android.permission.CAMERA\\"/>|" android/app/src/main/AndroidManifest.xml'
+      - sed -i 's|<application |<application android:networkSecurityConfig="@xml/network_security_config" |' android/app/src/main/AndroidManifest.xml
+      - flutter build apk --debug
     artifacts:
-      - build/app/outputs/**/*.apk
+      - build/app/outputs/flutter-apk/app-debug.apk
