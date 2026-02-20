@@ -108,9 +108,49 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
     }
   }
 
-  void _onNidSelected(LatLng pos, String id) {
+  void _onNidSelected(LatLng pos, String id, [String? photoUrl]) {
     setState(() => _selectedId = id);
     _mapController.move(pos, 17.5);
+
+    if (photoUrl != null) {
+      showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(8),
+              child: Image.network(
+                photoUrl,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return SizedBox(
+                    height: 200,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        value: progress.expectedTotalBytes != null
+                            ? progress.cumulativeBytesLoaded /
+                                progress.expectedTotalBytes!
+                            : null,
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) => SizedBox(
+                  height: 200,
+                  child: const Center(
+                    child: Icon(Icons.broken_image, size: 48),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -162,23 +202,34 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
               ),
               MarkerLayer(
                 markers: docs.map((doc) {
-                  final data =
-                      doc.data() as Map<String, dynamic>;
+                  final data = doc.data() as Map<String, dynamic>;
                   final gp = data['pos'] as GeoPoint;
-                  final pos =
-                      LatLng(gp.latitude, gp.longitude);
+                  final pos = LatLng(gp.latitude, gp.longitude);
+                  final isSelected = _selectedId == doc.id;
 
                   return Marker(
                     point: pos,
-                    width: 40,
-                    height: 40,
+                    width: 48,
+                    height: 48,
                     child: GestureDetector(
                       onTap: () =>
-                          _onNidSelected(pos, doc.id),
-                      child: const Icon(
-                        Icons.location_on,
-                        color: Colors.red,
-                        size: 36,
+                          _onNidSelected(pos, doc.id, data['photoUrl']),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.green : Colors.red,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.4),
+                              blurRadius: 6,
+                            )
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.location_on,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                       ),
                     ),
                   );
@@ -227,8 +278,7 @@ class _AddNidDialogState extends State<AddNidDialog> {
       withData: true,
     );
 
-    if (result != null &&
-        result.files.single.bytes != null) {
+    if (result != null && result.files.single.bytes != null) {
       setState(() => _bytes = result.files.single.bytes);
     }
   }
