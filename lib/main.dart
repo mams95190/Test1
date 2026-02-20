@@ -458,21 +458,3 @@ class _AddNidDialogState extends State<AddNidDialog> {
 }
 ```
 
-## Installation
-
-1. Copie ce code dans `lib/main.dart`
-2. `flutter pub get`
-3. `flutter run`
-4. Push GitHub â†’ Codemagic build APK
-
-## FonctionnalitÃ©s
-
-âœ… Carte OpenStreetMap colorÃ©e  
-âœ… GPS localisation  
-âœ… Upload photos Firebase Storage  
-âœ… Markers cliquables numÃ©rotÃ©s  
-âœ… Liste temps rÃ©el Firestore  
-âœ… Auto-incrÃ©ment numÃ©ros  
-âœ… Permissions Android 14+  
-
-ðŸš€ **PrÃªt pour production !**
