@@ -63,6 +63,7 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
 
   Future<int> _reserveNextNumber() async {
     final counterRef = _firestore.collection('meta').doc('counter');
+
     return await _firestore.runTransaction<int>((tx) async {
       final snap = await tx.get(counterRef);
       final current = (snap.data()?['nidCounter'] as int?) ?? 0;
@@ -122,12 +123,6 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
         ),
         backgroundColor: Colors.white,
         elevation: 2,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => setState(() {}),
-          ),
-        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore
@@ -142,79 +137,52 @@ class _NidDashboardScreenState extends State<NidDashboardScreen> {
 
           final docs = snapshot.data?.docs ?? [];
 
-          return Row(
+          return FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: LatLng(50.8503, 4.3517),
+              initialZoom: 12,
+              onTap: (tapPosition, point) async {
+                final num = await _reserveNextNumber();
+                if (mounted) {
+                  showDialog(
+                    context: context,
+                    builder: (_) =>
+                        AddNidDialog(pos: point, autoNum: num),
+                  );
+                }
+              },
+            ),
             children: [
-              Expanded(
-                flex: 6,
-                child: FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: LatLng(50.8503, 4.3517),
-                    initialZoom: 12,
-                    onTap: (tapPosition, point) async {
-                      final num = await _reserveNextNumber();
-                      if (mounted) {
-                        showDialog(
-                          context: context,
-                          builder: (_) =>
-                              AddNidDialog(pos: point, autoNum: num),
-                        );
-                      }
-                    },
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      subdomains: const ['a', 'b', 'c'],
-                      maxZoom: 19,
-                    ),
-                    MarkerLayer(
-                      markers: docs.map((doc) {
-                        final data =
-                            doc.data() as Map<String, dynamic>;
-                        final gp = data['pos'] as GeoPoint;
-                        final pos =
-                            LatLng(gp.latitude, gp.longitude);
-
-                        return Marker(
-                          point: pos,
-                          width: 40,
-                          height: 40,
-                          child: GestureDetector(
-                            onTap: () =>
-                                _onNidSelected(pos, doc.id),
-                            child: const Icon(
-                              Icons.location_on,
-                              color: Colors.red,
-                              size: 36,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
+              TileLayer(
+                urlTemplate:
+                    'https://tile.thunderforest.com/atlas/{z}/{x}/{y}.png?apikey=d123fd3281734f0f977e15eb84dba100',
+                userAgentPackageName: 'com.example.nidpoule',
+                maxZoom: 22,
               ),
-              Expanded(
-                flex: 4,
-                child: ListView.builder(
-                  itemCount: docs.length,
-                  itemBuilder: (context, index) {
-                    final doc = docs[index];
-                    final data =
-                        doc.data() as Map<String, dynamic>;
+              MarkerLayer(
+                markers: docs.map((doc) {
+                  final data =
+                      doc.data() as Map<String, dynamic>;
+                  final gp = data['pos'] as GeoPoint;
+                  final pos =
+                      LatLng(gp.latitude, gp.longitude);
 
-                    return ListTile(
-                      title: Text(
-                        'Nid #${data['num']}',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold),
+                  return Marker(
+                    point: pos,
+                    width: 40,
+                    height: 40,
+                    child: GestureDetector(
+                      onTap: () =>
+                          _onNidSelected(pos, doc.id),
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.red,
+                        size: 36,
                       ),
-                      subtitle: Text(data['nid'] ?? ''),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                }).toList(),
               ),
             ],
           );
