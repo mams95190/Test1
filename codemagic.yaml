@@ -5,37 +5,32 @@ workflows:
       flutter: 3.41.1
 
     scripts:
-      - name: Clean
-        script: "flutter clean"
+      - name: Setup
+        script: |
+          flutter clean
+          flutter pub get
+          flutter pub run flutter_launcher_icons:main
+          flutter create --platforms android .
 
-      - name: Packages
-        script: "flutter pub get"
+      - name: Patch Manifest
+        script: |
+          perl -i -pe 'BEGIN{undef $/;} s/(<manifest[^>]*>)/$1
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+  <uses-permission android:name="android.permission.CAMERA"/>/' android/app/src/main/AndroidManifest.xml
+          perl -i -pe 's/(<application )/$1android:networkSecurityConfig="@xml/network_security_config" /' android/app/src/main/AndroidManifest.xml
 
-      - name: Icons
-        script: "flutter pub run flutter_launcher_icons:main"
+      - name: Network XML
+        script: |
+          mkdir -p android/app/src/main/res/xml
+          echo '<?xml version="1.0"?><network-security-config><domain includeSubdomains="true">*.openstreetmap.org</domain></network-security-config>' > android/app/src/main/res/xml/network_security_config.xml
 
-      - name: Create Android
-        script: "flutter create --platforms android ."
-
-      - name: Add permissions
-        script: >-
-          sed -i '/<manifest xmlns:android=/a\
-  <uses-permission android:name="android.permission.INTERNET"/>\
-  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\
-  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\
-  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\
-  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\
-  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\
-  <uses-permission android:name="android.permission.CAMERA"/>' android/app/src/main/AndroidManifest.xml
-
-      - name: Network config
-        script: >-
-          mkdir -p android/app/src/main/res/xml &&
-          echo '<?xml version="1.0" encoding="utf-8"?><network-security-config><domain includeSubdomains="true">*.openstreetmap.org</domain></network-security-config>' > android/app/src/main/res/xml/network_security_config.xml &&
-          sed -i 's/<application /<application android:networkSecurityConfig="@xml/network_security_config" /' android/app/src/main/AndroidManifest.xml
-
-      - name: Build APK
-        script: "flutter build apk --debug"
+      - name: Build
+        script: flutter build apk --debug
 
     artifacts:
       - build/app/outputs/flutter-apk/app-debug.apk
