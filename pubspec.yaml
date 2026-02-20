@@ -31,6 +31,6 @@ flutter:
   # LAUNCHER ICONS (obligatoire)
   flutter_launcher_icons:
     android: "launcher_icon"
-    image_path: "assets/icon/icon.png"  # Créez 1024x1024 PNG
+    image_path: "assets/icon.png"  # Créez 1024x1024 PNG
 
 # Permissions auto via plugins
