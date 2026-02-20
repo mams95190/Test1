@@ -1,9 +1,8 @@
 workflows:
   android-full-featured:
     name: APK Pro - Carte + GPS + Photos
-
     environment:
-      flutter: 3.41.1
+      flutter: 3.41.1  # Utilisez 'latest' si possible pour stabilité [web:27]
 
     scripts:
       - name: Clean everything
@@ -56,7 +55,7 @@ EOF
 
     <application
         android:label="NidPoule"
-        android:name="android.app.Application"
+        android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:networkSecurityConfig="@xml/network_security_config">
 
@@ -92,4 +91,4 @@ EOF
         script: flutter build apk --debug
 
     artifacts:
-      - build/app/outputs/**/*.apk
+      - build/app/outputs/flutter-apk/app-debug.apk  # Chemin exact pour debug [web:28][web:30]
