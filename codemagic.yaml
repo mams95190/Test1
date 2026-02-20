@@ -32,17 +32,17 @@ workflows:
         </network-security-config>
         EOF
 
-      # Ajouter toutes les permissions nécessaires (macOS-safe)
+      # Ajouter toutes les permissions avant <application> (macOS-safe)
       - |
-        cat <<EOF >> android/app/src/main/AndroidManifest.xml
-        <uses-permission android:name="android.permission.INTERNET"/>
-        <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-        <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-        <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-        <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-        <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-        <uses-permission android:name="android.permission.CAMERA"/>
-        EOF
+        sed -i '' '/<application /i\
+        <uses-permission android:name="android.permission.INTERNET"/>\
+        <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\
+        <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\
+        <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\
+        <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\
+        <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\
+        <uses-permission android:name="android.permission.CAMERA"/>\
+        ' android/app/src/main/AndroidManifest.xml
 
       # Ajouter networkSecurityConfig dans <application> (macOS-safe)
       - sed -i '' 's|<application |<application android:networkSecurityConfig="@xml/network_security_config" |' android/app/src/main/AndroidManifest.xml
