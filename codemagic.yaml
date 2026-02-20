@@ -1,50 +1,33 @@
 workflows:
-  android-full-featured:
-    name: APK Pro - Carte + GPS + Photos
+  android-release:
+    name: Nid Poule APK
     environment:
       flutter: 3.41.1
+
     scripts:
-      # 1️⃣ Nettoyage et récupération des packages
       - flutter clean
       - flutter pub get
 
-      # 2️⃣ Génération de l'icône si elle existe
-      - '[ -f assets/icon.png ] && flutter pub run flutter_launcher_icons:main || echo "no icon"'
-
-      # 3️⃣ Création du projet Android si nécessaire
+      # Générer Android si absent
       - flutter create --platforms android .
+
+      # Créer dossier xml si absent
       - mkdir -p android/app/src/main/res/xml
 
-      # 4️⃣ Création du network_security_config.xml COMPLET
+      # Créer network_security_config.xml
       - |
         cat <<EOF > android/app/src/main/res/xml/network_security_config.xml
         <?xml version="1.0" encoding="utf-8"?>
         <network-security-config>
-            <base-config cleartextTrafficPermitted="false">
-                <trust-anchors>
-                    <certificates src="system"/>
-                </trust-anchors>
-            </base-config>
-            <domain-config cleartextTrafficPermitted="true">
-                <domain includeSubdomains="true">tile.openstreetmap.org</domain>
-                <domain includeSubdomains="true">tile.openstreetmap.fr</domain>
-            </domain-config>
+            <base-config cleartextTrafficPermitted="true" />
         </network-security-config>
         EOF
 
-      # 5️⃣ Ajouter toutes les permissions nécessaires dans AndroidManifest.xml
-      #    ⚠️ macOS safe ('' après -i)
-      - sed -i '' 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" /><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" /><uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /><uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" /><uses-permission android:name="android.permission.READ_MEDIA_IMAGES" /><uses-permission android:name="android.permission.CAMERA" />|' android/app/src/main/AndroidManifest.xml
+      # Ajouter networkSecurityConfig dans <application>
+      - sed -i 's|<application |<application android:networkSecurityConfig="@xml/network_security_config" |' android/app/src/main/AndroidManifest.xml
 
-      # 6️⃣ Ajouter networkSecurityConfig dans <application>
-      - sed -i '' 's|<application |<application android:networkSecurityConfig="@xml/network_security_config" |' android/app/src/main/AndroidManifest.xml
-
-      # 7️⃣ Build APK debug
-      - flutter build apk --debug
-
-      # 8️⃣ Build APK release
+      # Build release
       - flutter build apk --release
 
     artifacts:
-      - build/app/outputs/flutter-apk/app-debug.apk
       - build/app/outputs/flutter-apk/app-release.apk
